@@ -1,0 +1,192 @@
+def = 
+  pace: 10
+  type: Expo.easeOut
+  duration: 1
+  timeGap: 50 
+  accelerator: 30
+  backDuration: 0.4
+  backDistance: 40
+
+$.fn.scroll = (options)->
+  settings = $.extend({}, def, options)
+  [pace, type, duration] = [settings.pace, settings.type, settings.duration]
+  [threshold, accelerator] = [settings.timeGap, settings.accelerator]
+  [backDuration, backDistance] = [settings.backDuration, settings.backDistance]
+  enable = true
+
+  @enableScroll = (enableParam)=> 
+    enable = enableParam
+    if enable  
+      @each (i)->
+        $this = $ @
+        $this.trigger 'mouseover'
+        $scrollbar = $this.find('.scroll-bar') 
+        $scrollbar.fadeIn()
+    else     
+      @each (i)->
+        $this = $ @
+        $scrollbar = $this.find('.scroll-bar') 
+        $scrollbar.fadeOut()
+
+  @scrollMeTo = (top, duration=0.2, inFlash=false)=> 
+    @each (i)->
+      $this = $ @
+      $scrollInner = $this.find('.scroll-inner') 
+      if inFlash
+        $scrollInner.css 'top': top
+      else   
+        TweenLite.to $scrollInner, duration, {'top': top + 'px'}
+
+  @each (i)->
+    $this = $ @
+    $scrollbar = $('<div class = "scroll-bar"></div>')
+    $scrollInner = $this.find('.scroll-inner')
+    clientY = 0
+
+    isScrollbarExisted = true
+    $this.append $scrollbar
+
+    originHeight = $scrollInner.height()
+    previousHeight = 0
+    timeStamp = 0 
+    accumulate = 0
+    
+    recalculateScrollbarHeight = ->
+      if not enable then return
+      innerHeight = $scrollInner.height()
+      outerHeight = $this.height() 
+      minimalScrollbarHeight = 50
+      scrollbarHeight = outerHeight * (outerHeight - minimalScrollbarHeight) / innerHeight + minimalScrollbarHeight
+
+      if innerHeight > outerHeight
+        TweenLite.to $scrollbar, 0.3, { height: scrollbarHeight }
+        $scrollbar.stop(true, true).fadeIn(200)
+
+      else   
+        $scrollbar.stop(true, true).fadeOut(200)
+
+    $this.hover recalculateScrollbarHeight, (event)->
+      $scrollbar.stop(true, true).fadeOut(200)
+
+    scrolling = ($outer, pace, dirct, isDrag)->
+      if $outer.is(':visible')
+        if $outer.height() >= $scrollInner.height()
+          TweenLite.to $scrollInner, 0.3, {top: '0px'}
+          $scrollbar.stop()
+          $scrollbar.fadeOut 200
+          return 
+        recalculateScrollbarHeight()
+        $that = @
+        if $that == $scrollbar then $other = $scrollInner
+        else  $other= $scrollbar
+        top = $that.position().top
+        bottom = $outer.height() - $that.height() || -1
+        newTop = 0
+        otherBottom = $outer.height() - $other.height()
+        newOtherTop = 0
+        dist = 0
+
+        newTop = top + pace
+        dist = (bottom - newTop) * dirct
+
+        backTop = null
+        if dist < 0
+          newTop = bottom - backDistance
+          backTop = bottom
+        else if dist > bottom * dirct 
+          newTop = backDistance
+          backTop = 0
+
+        getNewOtherTop = (top)=> 
+          top / bottom * otherBottom
+
+        back = =>
+          if backTop is null then return
+          newTop = backTop
+          getNewOtherTop newTop
+          backType = null # Quart.easeIn 
+          TweenLite.to $that, backDuration, {top: newTop + 'px', ease: backType}
+          TweenLite.to $other, backDuration, {top: newOtherTop + 'px', ease: backType}
+
+        if isDrag
+          if backTop isnt null then newTop = backTop
+          $that.css top: newTop + 'px'
+          #coordinate with the other
+          newOtherTop = getNewOtherTop newTop
+          $other.css top: newOtherTop + 'px'
+        else 
+          if backTop is null
+            easeType = type
+            easeDuration = duration
+          else 
+            easeType = null 
+            easeDuration = backDuration
+          TweenLite.to $that, easeDuration, {top: newTop + 'px', ease: easeType, onComplete: back}
+          #coordinate with the other
+          newOtherTop = getNewOtherTop newTop
+          TweenLite.to $other, easeDuration, {top: newOtherTop + 'px', ease: easeType, onComplete: back}
+
+        reachTop = =>  
+          $scrollInner.position().top >= 0
+        reachBottom = =>  
+          $scrollInner.position().top <= $outer.height() - $scrollInner.height()
+
+        if reachTop()
+          $this.trigger 'reach-top', @
+        else if reachBottom()
+          $this.trigger 'reach-bottom', @
+
+
+    $this.on 'mousewheel DOMMouseScroll',(event)->
+      if not enable then return 
+      event.preventDefault()
+      scrollTo = 0
+      top = $scrollInner.position().top
+      outerHeight = $this.height()
+      innerHeight = $scrollInner.height()
+      newTop = 0
+      bottom = outerHeight - innerHeight
+      scrollbarBottom = outerHeight - $scrollbar.height()
+      scrollbarTop = 0
+
+      timeNow = +new Date
+      timeGap = timeNow - timeStamp
+      timeStamp = timeNow
+
+      if timeGap <= threshold
+        inc = accelerator - timeGap
+        accumulate += if inc > 0 then inc else 0
+      else accumulate = 0
+
+      accmulatePace = pace + accumulate
+      accmulatePace = if accmulatePace > 0 then accmulatePace else 0
+
+      if event.type == 'mousewheel'
+        scrollTo = event.originalEvent.wheelDelta / 30 * -1 * accmulatePace
+      else if event.type == 'DOMMouseScroll'
+        scrollTo = event.originalEvent.detail * accmulatePace
+
+      scrolling.call $scrollInner, $this, -scrollTo, -1
+
+    mousemove = (event)->
+      event.preventDefault()
+      event.stopPropagation()
+
+      dist  = event.clientY - clientY
+      $that = $ @
+      top = $scrollbar.position().top
+
+      clientY =  event.clientY
+
+      if isScrollbarExisted
+        scrolling.call $scrollbar, $this, dist, 1, true
+
+    $scrollbar.on 'mousedown',(event)->
+      event.preventDefault()
+      clientY = event.clientY
+      $this.on 'mousemove', mousemove
+
+    $(document.body).on 'mouseup', (event)->
+      $this.off 'mousemove', mousemove
+      if isScrollbarExisted
+        scrolling.call $scrollInner, $this, 0, -1, true

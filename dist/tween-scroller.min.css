@@ -1,0 +1,1 @@
+.scroll-outer{position:relative;overflow:hidden}.scroll-outer .scroll-inner{position:absolute;min-height:100%;top:0;left:0;overflow:hidden}.scroll-outer .scroll-bar{display:none;position:absolute;height:50px;width:5px;top:0;right:0;opacity:.7;margin-left:5px;background:#BDAEAE;border:1px solid #E0E6E8;border-radius:6px}

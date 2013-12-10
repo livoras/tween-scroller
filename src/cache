@@ -190,3 +190,5 @@ $.fn.scroll = (options)->
       $this.off 'mousemove', mousemove
       if isScrollbarExisted
         scrolling.call $scrollInner, $this, 0, -1, true
+
+        

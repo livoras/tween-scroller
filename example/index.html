@@ -21,170 +21,106 @@
 <body>
   <div class="wrapper scroll-outer">
     <div class="content scroll-inner">
-      New in JavaScript 1.7
-Read content offline
-Redirected from New in JavaScript 1.7 Redirect 1
+What?
+Nowadays building any non-trivial JavaScript application requires a significant amount of code. Historically JavaScript doesn't have any modular system, which allows you to split your code in modules, separate files and control their dependencies. Moreover a big application doesn't need to initialize all its subsystems on start. Here a lazy loading of submodules (which is actually AMD) comes to help. There are a lot of great libraries that provide AMD functionality (RequireJS is the most notable). However, I feel a constant frustration with their complexity and strange design decisions. I feel that things are not DRY and my code is not narrative when I'm writing things like this in RequireJS:
 
-HISTORY EDIT
-TABLE OF CONTENTS
+requirejs(['jquery', 'canvas', 'app/sub'], function   ($, canvas, sub) {
+    //jQuery, canvas and the app/sub module are loaded and can be used here now.
 
-Using JavaScript 1.7
-Generators and iterators (merge into Iterators and Generators)
-Generators
-Resuming a generator at a specific point
-Exceptions in generators
-Closing a generator
-Generator example
-Iterators
-Array comprehensions (Merge into Array comprehensions)
-Scoping rules
-Block scope with let (Merge into let Statement)
-let statement
-Scoping rules
-let expressions
-Scoping rules
-let definitions
-Scoping rules
-let-scoped variables in for loops
-Scoping rules
-Destructuring assignment (Merge into own page/section)
-Examples
-Avoiding temporary variables
-Multiple-value returns
-Looping across objects
-Looping across values in an array of objects
-Pulling fields from objects passed as function parameter
-Ignoring some returned values
-Pulling values from a regular expression match
-TAGS FILES
-JavaScript 1.7 is a language update introducing several new features, in particular generators, iterators, array comprehensions, let expressions, and destructuring assignment. It also includes all the features of JavaScript 1.6.
+    return {
+        helloWorld: function() {
+          console.log('Hi there!');
+        }
+    };
+});
+This is how I want it to be done in my code:
 
-Using JavaScript 1.7
-Generators and iterators (merge into Iterators and Generators)
-Generators
-Resuming a generator at a specific point
-Exceptions in generators
-Closing a generator
-Generator example
-Iterators
-Array comprehensions (Merge into Array comprehensions)
-Scoping rules
-Block scope with let (Merge into let Statement)
-let statement
-Scoping rules
-let expressions
-Scoping rules
-let definitions
-Scoping rules
-let-scoped variables in for loops
-Scoping rules
-Destructuring assignment (Merge into own page/section)
-Examples
-Avoiding temporary variables
-Multiple-value returns
-Looping across objects
-Looping across values in an array of objects
-Pulling fields from objects passed as function parameter
-Ignoring some returned values
-Pulling values from a regular expression match
-TAGS FILES
-JavaScript 1.7 is a language update introducing several new features, in particular generators, iterators, array comprehensions, let expressions, and destructuring assignment. It also includes all the features of JavaScript 1.6.
+MyApp.define('Main', function(require, exports) {
+    var $ = require('jquery'),
+        canvas = require('canvas'),
+        sub = require('sub');
 
-JavaScript 1.7 support was introduced in Firefox 2.
+    exports.helloWorld = function(){
+      console.log('Hi there');
+    };
+});
+Another issue of RequireJs is that a module structure mimics a filesystem structure. So rebasing a single file may become a significant pain in the ass. The most common process of building your scripts (e.g. with grunt) is:
 
-The code samples included in this article can be experimented with in the JavaScript shell. Read Introduction to the JavaScript shell to learn how to build and use the shell.
+Concat all JS files in the given directory into a single file, which is used at run time
+Minify this file
+With such approach, usage of the RequireJS may become really painful.
 
-Using JavaScript 1.7
+So if you want
 
-In order to use some of the new features of JavaScript 1.7, you need to specify that you wish to use JavaScript 1.7. In HTML or XUL code, use:
+nice, modular and narrative code
+filesystem/URL-agnostic AMD library with nice error handling
+concat all your scripts (without taking care of their order/filesystem path) into a single file
+then mods is your choice.
+<img src="data:image/jpeg;base64,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" alt="">
 
-<script type="application/javascript;version=1.7"></script>
-When using the JavaScript shell, you need to set the version you wish to use using the -version 170 switch on the command line or using the version() function:
+Usage
+1. Init your app/module container
 
-version(170);
-The features that require the use of the new keywords "yield" and "let" require you to specify version 1.7 because existing code might use those keywords as variable or function names. The features that do not introduce new keywords (destructuring assignment and array comprehensions) can be used without specifying the JavaScript version.
+var MyApp = new Mods();
+2. Encapsulate used libs
 
-<img src="http://cdn.uecss.com/wp-content/uploads/2011/09/111.png" alt="">
-Generators and iterators (merge into Iterators and Generators)
+MyApp.define('jQuery', function() {
+    this.exports = jQuery.noConflict();
+});
 
-When developing code that involves an iterative algorithm (such as iterating over a list, XML nodes, or database results; or repeatedly performing computations on the same data set), there are often state variables whose values need to be maintained for the duration of the computation process. Traditionally, you have to use a callback function to obtain the intermediate values of an iterative algorithm.
+MyApp.define('async', function() {
+    this.exports = async.noConflict();
+});
+3. Define your modules
 
-Generators
+//Use objects as exports...
+//---------------------------------------------------------
+MyApp.define('Greetings.Settings', function() {
+    this.exports = {
+      text: 'Hello world',
+      color: 'red'
+    };
+});
 
-Consider this iterative algorithm that computes Fibonacci numbers:
 
-function do_callback(num) {
-  console.log(num);
-}
+//...or use functions as exports...
+//----------------------------------------------------------
+MyApp.define('Greetings.Printer.DOM', function(require) {
+    var $ = require('jQuery');
 
-function fib() {
-  var i = 0, j = 1, n = 0;
-  while (n < 10) {
-    do_callback(i);
-    var t = i;
-    i = j;
-    j += t;
-    n++;
-  }
-}
+    this.exports = function(text, color) {
+        $('')
+            .text(text)
+            .css({color: color})
+            .appendTo('body');
+    };
+});
 
-fib();
-This code uses a callback routine to perform operations on each iterative step of the algorithm. In this case, each Fibonacci number is simply printed to the console.
 
-Generators and iterators work together to provide a new, better way to do this. Let's see how the Fibonacci number routine looks written using a generator:
+MyApp.define('Greetings.Printer.Console', function(require) {
+    this.exports = function(text) {
+        console.log(text);
+    };
+});
 
-function *fib() {
-  var i = 0, j = 1;
-  while (true) {
-    yield i;
-    var t = i;
-    i = j;
-    j += t;
-  }
-}
 
-var g = fib();
-for (var i = 0; i < 10; i++) {
-  console.log(g.next());
-}
-The function containing the yield keyword is a generator. When you call it, its formal parameters are bound to actual arguments, but its body isn't actually evaluated. Instead, a generator-iterator is returned. Each call to the generator-iterator's next() method performs another pass through the iterative algorithm. Each step's value is the value specified by the yield keyword. Think of yield as the generator-iterator version of return, indicating the boundary between each iteration of the algorithm. Each time you call next(), the generator code resumes from the statement following the yield.
+//...or just extend exports object (like in node.js)
+//----------------------------------------------------------
+MyApp.define('Main', function(require, exports) {
+    var Settings = require('Greetings.Settings'),
+        printToDOM = require('Greetings.Printer.DOM'),
+        printToConsole = require('Greetings.Printer.Console');
 
-You cycle a generator-iterator by repeatedly calling its next() method until you reach your desired result condition. In this example, we can obtain however many Fibonacci numbers we want by continuing to call g.next() until we have the number of results we want.
-
-Resuming a generator at a specific point
-
-Once a generator has been started by calling its next() method, you can use send(), passing a specific value that will be treated as the result of the last yield. The generator will then return the operand of the subsequent yield.
-
-You can't start a generator at an arbitrary point; you must start it with next() before you can send() it a specific value.
-
-Note: As a point of interest, calling send(undefined) is equivalent to calling next(). However, starting a newborn generator with any value other than undefined when calling send() will result in a TypeError exception.
-Exceptions in generators
-
-You can force a generator to throw an exception by calling its throw() method, passing the exception value it should throw. This exception will be thrown from the current suspended context of the generator, as if the yield that is currently suspended were instead a throw value statement.
-
-If a yield is not encountered during the processing of the thrown exception, then the exception will propagate up through the call to next(), and subsequent calls to next() will result in StopIteration being thrown.
-
-Closing a generator
-
-Generators have a close() method that forces the generator to close itself. The effects of closing a generator are:
-
-Any finally clauses active in the generator function are run.
-If a finally clause throws any exception other than StopIteration, the exception is propagated to the caller of the close() method.
-The generator terminates.
-Generator example
-
-This code drives a generator that will yield every 100 loops.
-
-var gen = generator();
-
-function driveGenerator() {
-  if (gen.next()) {
-    window.setTimeout(driveGenerator, 0); 
-  } else {
-    gen.close();  
-  }
-}
+    exports.helloToDOM = function(){
+        printToDOM(Settings.text, Settings.color);
     </div>
+  </div>
+  <div>
+    <button id="enable">enableScroll</button>
+    <button id="disable">disableScroll</button>
+    <button id="scrollMeTo">scrollMeTo</button>
+    <button id="scrollMeToTop">scrollMeToTop</button>
+    <button id="scrollMeToBottom">scrollMeToBottom</button>
   </div>
 </body>
 <script src="../bin/tween-scroller.js"></script>
@@ -193,6 +129,36 @@ function driveGenerator() {
 
 <script>
   var $scrollOuter = $('div.scroll-outer:eq(0)');
-  $scrollOuter.scroll();
+  var $scrollInner = $('div.scroll-inner:eq(0)');
+
+  $scrollOuter.scroll({
+    minimalScrollbarHeight: 50,
+    accelerator: 4
+  });
+
+  $scrollOuter.on('reach-top', function() {
+    console.log('reach-top...')
+  })
+
+  $scrollOuter.on('reach-bottom', function() {
+    $scrollInner.append('<div>' + new Date +'</div>')
+  })
+
+  $('#enable').click(function() {
+    $scrollOuter.enableScroll()
+  })
+  $('#disable').click(function() {
+    $scrollOuter.disableScroll()
+  })
+  $('#scrollMeTo').click(function() {
+    $scrollOuter.scrollMeTo(Math.random() * ($scrollOuter.outerHeight() - $scrollInner.outerHeight()))
+  })
+  $('#scrollMeToTop').click(function() {
+    $scrollOuter.scrollMeTo('top')
+  })
+  $('#scrollMeToBottom').click(function() {
+    $scrollOuter.scrollMeTo('bottom')
+  })
+
 </script>   
 </html>

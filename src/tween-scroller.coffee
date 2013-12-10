@@ -1,21 +1,36 @@
 $.fn.scroll = (options)->
-  detailTime = 1000 / 60 # frame
-  mass = 1
+  def = 
+    minimalScrollbarHeight: 50
+    accelerator: 4
 
-  maxVelocity = 60
-  minVelocity = 0.8
-  
-  accelerator = 4
-  coefficienceK = 0.97
-  exceedCoefficience = 0.7
-
-  allowExceedLength = 50
-  backTime = 500
-
-  scrollbarMinHeight = 50
-  [EXCEED_UP, EXCEED_DOWN, NO_EXCEED] = [0, 1, 2] 
+  settings = $.extend {}, def, options
 
   $document = $ document
+  detailTime = 1000 / 60 # frame
+  maxVelocity = 60
+  minVelocity = 0.8
+  backTime = 500
+  coefficienceK = 0.97
+  exceedCoefficience = 0.7
+  
+  accelerator = settings.accelerator
+  minimalScrollbarHeight = settings.minimalScrollbarHeight
+
+  plugin = =>
+    $outer = @
+    $inner = $outer.find 'div.scroll-inner:eq(0)'
+    $outer.$inner = $inner
+    $outer.enableScrolling = true
+
+    addScrollbar $outer
+    resetScrollbarHeight $outer
+
+    $outer.velocity = 0
+
+    listenMouseWheelEvent $outer
+    dragAndDropScrollBar $outer
+    toggleShowHideScrollBarOnHover $outer
+    exportAPIs $outer
 
   listenMouseWheelEvent = ($outer)->
     $outer.on 'mousewheel DOMMouseScroll', $.proxy scroll, $outer
@@ -26,19 +41,24 @@ $.fn.scroll = (options)->
     $inner = $outer.$inner
     $scrollbar = $outer.$scrollbar
 
+    if not isAbleToScroll $outer then return
+
+    showScrollbar $outer
     resetScrollbarHeight $outer
 
     velocity = getNextVelocity $outer.velocity, getAccelerator event
     scrolling $outer, velocity
     scrollingScrollbar $outer
-    $scrollbar.stop(true, true)
+    $inner.stop(true, false)
+
+  isAbleToScroll = ($outer)=>  
+    $outer.outerHeight() < $outer.$inner.outerHeight() and $outer.enableScrolling
 
   scrolling = ($outer, velocity)->
     clearTimeout $outer.scrollTimer
     $inner = $outer.$inner
     $scrollbar = $outer.$scrollbar
 
-    $inner.stop(true, false)
     $inner.css 'top', "+=#{velocity}"
     $outer.scrollTimer = setTimeout ->
       scrolling $outer, velocity
@@ -49,14 +69,14 @@ $.fn.scroll = (options)->
       if $outer.isExceed then scrollBack $outer
       return 
 
-    addOnCoefficience = getExceedCoefficience $outer
+    addOnCoefficience = checkExceedAndGetExceedCoefficience $outer
     velocity = getNextVelocity velocity, 0, addOnCoefficience
     $outer.velocity = velocity
 
   isStop = (velocity)->  
     Math.abs(velocity) < minVelocity
 
-  getExceedCoefficience = ($outer)=>  
+  checkExceedAndGetExceedCoefficience = ($outer)=>  
     $inner = $outer.$inner
     innerTop = $inner.position().top
     minInnerTop = $outer.outerHeight() - $inner.outerHeight()
@@ -64,10 +84,12 @@ $.fn.scroll = (options)->
     if innerTop > maxInnerTop 
       $outer.isExceed = true
       $outer.exceedDistance = innerTop 
+      $outer.trigger 'reach-top'
       return exceedCoefficience
     else if innerTop < minInnerTop
       $outer.isExceed = true
       $outer.exceedDistance = innerTop - minInnerTop
+      $outer.trigger 'reach-bottom'
       return exceedCoefficience
     else
       $outer.isExceed = false
@@ -81,10 +103,10 @@ $.fn.scroll = (options)->
     minScrollbarTop = $outer.outerHeight() - $scrollbar.outerHeight()
     if distance < 0
       $inner.stop(true, false).animate 'top': minInnerTop, backTime
-      $scrollbar.stop().animate 'top':minScrollbarTop, backTime
+      $scrollbar.stop(false, true).animate 'top':minScrollbarTop, backTime
     else 
       $inner.stop(true, false).animate 'top': 0, backTime
-      $scrollbar.stop().animate 'top': 0, backTime
+      $scrollbar.stop(false, true).animate 'top': 0, backTime
 
   stopScrolling = ($outer)=>
     $outer.velocity = 0
@@ -104,7 +126,7 @@ $.fn.scroll = (options)->
   resetScrollbarHeight = ($outer)=>  
     outerHeight = $outer.outerHeight()
     innerHeight = $outer.$inner.outerHeight()
-    scrollbarHeight = outerHeight * (outerHeight - scrollbarMinHeight) / innerHeight + scrollbarMinHeight
+    scrollbarHeight = outerHeight * (outerHeight - minimalScrollbarHeight) / innerHeight + minimalScrollbarHeight 
     $outer.$scrollbar.animate {'height': scrollbarHeight}, 300
 
   resetScrollbarPosition = ($outer)=>
@@ -175,8 +197,14 @@ $.fn.scroll = (options)->
   preventScrollbarExceed = (scrollbarTop, $outer)=>
     $scrollbar = $outer.$scrollbar
     maxScrollbarTop = $outer.outerHeight() - $scrollbar.outerHeight()
-    if scrollbarTop > maxScrollbarTop then scrollbarTop = maxScrollbarTop 
-    if scrollbarTop < 0 then scrollbarTop = 0
+
+    if scrollbarTop > maxScrollbarTop
+      scrollbarTop = maxScrollbarTop 
+      $outer.trigger 'reach-bottom'
+    if scrollbarTop < 0
+      scrollbarTop = 0
+      $outer.trigger 'reach-bottom'
+
     scrollbarTop
 
   scrollInnerCoordinateWithScrollBar = ($outer)=>
@@ -198,6 +226,7 @@ $.fn.scroll = (options)->
 
   showScrollbar = ($outer)->    
     if $outer.isDragging then return 
+    if not isAbleToScroll $outer then return 
     $outer.$scrollbar
           .stop(true, true)
           .fadeIn 200
@@ -209,18 +238,41 @@ $.fn.scroll = (options)->
           .fadeOut 200
 
   exportAPIs = ($outer)->
+    $.extend $outer, {
+      enableScroll, 
+      disableScroll
+      scrollMeTo
+    }
 
-  @each (i, elem)->
-    $outer = $ elem
-    $inner = $outer.find 'div.scroll-inner:eq(0)'
-    $outer.$inner = $inner
+  enableScroll = (disable)->
+    @enableScrolling = true
+    if disable is false then @enableScrolling = false
 
-    addScrollbar $outer
-    resetScrollbarHeight $outer
+  disableScroll = ->
+    @enableScrolling = false
 
-    $outer.velocity = 0
+  scrollMeTo = (innerTop)->  
+    [$inner, $scrollbar] = [@$inner, @$scrollbar]
+    outerHeight = @outerHeight()
+    innerHeight = $inner.outerHeight()
+    scrollbarHeight = $scrollbar.outerHeight()
 
-    listenMouseWheelEvent $outer
-    dragAndDropScrollBar $outer
-    toggleShowHideScrollBarOnHover $outer
-    exportAPIs $outer
+    if innerTop is 'top' then innerTop = 0
+    if innerTop is 'bottom' then innerTop = outerHeight - innerHeight
+    if typeof innerTop isnt 'number' then return
+
+    innerTop = preventInnerExceed @,innerTop 
+    scrollbarTop = -innerTop * (outerHeight - scrollbarHeight) / (innerHeight - outerHeight)
+
+    stopScrolling @
+    $inner.stop(true, false).animate {top: innerTop}, 500
+    $scrollbar.stop(true, false).animate {top: scrollbarTop}, 500
+
+  preventInnerExceed = ($outer, innerTop)->
+    $inner = $outer.$inner
+    minInnerTop = $outer.outerHeight() - $inner.outerHeight()
+    if innerTop > 0 then return 0
+    if innerTop < minInnerTop then return minInnerTop
+    innerTop
+
+  plugin()

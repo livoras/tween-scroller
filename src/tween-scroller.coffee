@@ -18,7 +18,7 @@ $.fn.scroll = (options)->
 
   plugin = =>
     $outer = @
-    $inner = $outer.find 'div.scroll-inner:eq(0)'
+    $inner = $outer.find '.scroll-inner:eq(0)'
     $outer.$inner = $inner
     $outer.enableScrolling = true
 
@@ -251,7 +251,7 @@ $.fn.scroll = (options)->
   disableScroll = ->
     @enableScrolling = false
 
-  scrollMeTo = (innerTop)->  
+  scrollMeTo = (innerTop, duration=300)->  
     [$inner, $scrollbar] = [@$inner, @$scrollbar]
     outerHeight = @outerHeight()
     innerHeight = $inner.outerHeight()
@@ -265,8 +265,8 @@ $.fn.scroll = (options)->
     scrollbarTop = -innerTop * (outerHeight - scrollbarHeight) / (innerHeight - outerHeight)
 
     stopScrolling @
-    $inner.stop(true, false).animate {top: innerTop}, 500
-    $scrollbar.stop(true, false).animate {top: scrollbarTop}, 500
+    $inner.stop(true, false).animate {top: innerTop}, duration
+    $scrollbar.stop(true, false).animate {top: scrollbarTop}, duration
 
   preventInnerExceed = ($outer, innerTop)->
     $inner = $outer.$inner
